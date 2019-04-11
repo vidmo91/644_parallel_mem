@@ -1,6 +1,6 @@
 # ATmega644 parallel EEPROM/FLASH/SRAM interface
  
- made as template for further projects
+ made as template for further projects in AtmelStudio 7.0
  
  implemented: simple read/write functions and Flash ID read and erasing
  
