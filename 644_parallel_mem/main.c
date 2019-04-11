@@ -380,16 +380,16 @@ int main(void)
 					printf(" 0x%02x",temp);
 				}
 				if(error){
-					printf("\t    %02d\n",error);
+					printf("\t    %02d\td0\n",error);
 				}
 				else{
-					printf("\n");
+					printf("\td0\n");
 				}
 			}
 			for (uint16_t i=0;i<sizeOfData1; i+=0x10)
 			{
 				uint8_t error=0;
-				printf("0x%04x\t\t",i);
+				printf("0x%04x\t\t",i+sizeOfData0);
 				for (uint8_t j=0;j<0x10; j++)
 				{
 					if (j==8){
@@ -403,10 +403,10 @@ int main(void)
 					printf(" 0x%02x",temp);
 				}
 				if(error){
-					printf("\t    %02d\n",error);
+					printf("\t    %02d\td1\n",error);
 				}
 				else{
-					printf("\n");
+					printf("\td1\n");
 				}
 			}
 		}

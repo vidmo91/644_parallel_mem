@@ -10,7 +10,7 @@
 #define DATA_H_
 
 static const __flash uint8_t data0[16384]={0}; // 16KB=128Kb
-static const __flash uint8_t data1[16384]={0};	// 16KB=128Kb
+static const __flash uint8_t data1[16384]={ [ 0 ... 16383 ] = 1};	// 16KB=128Kb
 
 
 
