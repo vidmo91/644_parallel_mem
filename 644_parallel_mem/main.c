@@ -29,6 +29,8 @@
 #include <util/delay.h>
 #include <avr/sfr_defs.h>
 #include "uart.h"			// baud rate defined in uart.c
+#include "data.h"			// data to be burned 2 x 16KB arrays
+
 
 //////////////////////////////// memory testing parameters
 #define RANGE 0x2ff			  // max tested address
@@ -44,9 +46,9 @@
 #define OE PD6
 #define CE PD5
 
-#define J0 PD4				// enable writing pattern
+#define J0 PD4				// enable writing
 #define J1 PD3				// enable chip/sector erase
-#define J2 PD2
+#define J2 PD2				// H - write pattern L write data from data.h
 #define RXD0 PD1
 #define TXD0 PD0
 
@@ -220,7 +222,7 @@ void disableEEPROMprotection(){
 	writeMem(0x5555,0x20);
 	writeEnd();
 }
-void flashShipErase(){
+void flashChipErase(){
 	writeInit();
 	writeMem(0x5555,0xAA);
 	writeMem(0x2AAA,0x55);
@@ -288,20 +290,42 @@ int main(void)
 	
 	uint16_t id=flashReadID();
 	printf("\ndevice ID: 0x%04x\n\n",id);
-	
-	if (PINCTRL&(1<<J0))
+	uint16_t sizeOfData0=sizeof(data0);
+	uint16_t sizeOfData1=sizeof(data1);
+
+	if (PINCTRL&(1<<J0))							// write enable
 	{
-		printf("\nwriting test pattern...\n\n");
+		printf("\nwriting...\n\n");
 		
 		
-		if (PINCTRL&(1<<J1)){
-			//flashChipErase();
-			flashSectorErase(0);
-		}
-		for (uint16_t i=0+OFFSETA;i<=RANGE+OFFSETA;i++)
+		if (PINCTRL&(1<<J1))						// chip/sector erase
 		{
-			flashWritebyte(i,i+OFFSETV);
+			flashChipErase();
+			//flashSectorErase(0);
 		}
+		
+		if (PINCTRL&(1<<J2))						// write pattern
+		{
+			for (uint16_t i=0+OFFSETA;i<=RANGE+OFFSETA;i++)
+			{
+				flashWritebyte(i,i+OFFSETV);
+			}
+		}
+		else 										// write data
+		{
+			for (uint16_t i=0;i<sizeOfData0;i++)
+			{
+				flashWritebyte(i,data0[i]);
+			}
+			for (uint16_t i=0;i<sizeOfData1;i++)
+			{
+				flashWritebyte(i+sizeOfData0,data1[i]);
+			}
+			
+			
+		}
+		
+		
 	}
 	
 	while (1)
@@ -310,27 +334,85 @@ int main(void)
 
 		
 		printf("address\t\t    0    1    2    3    4    5    6    7\t    8    9    a    b    c    d    e    F\t error\n");
-		for (uint16_t i=0+OFFSETA;i<=RANGE+OFFSETA; i+=0x10)
+		uint16_t errorsTotal=0;
+		
+		if (PINCTRL&(1<<J2))											//testing pattern
 		{
-			uint8_t error=0;
-			printf("0x%04x\t\t",i);
-			for (uint8_t j=0;j<0x10; j++){
-				if (j==8){
-					printf("\t");
+			for (uint16_t i=0+OFFSETA;i<=RANGE+OFFSETA; i+=0x10)
+			{
+				uint8_t error=0;
+				printf("0x%04x\t\t",i);
+				for (uint8_t j=0;j<0x10; j++){
+					if (j==8){
+						printf("\t");
+					}
+					temp=readByte(i+j);
+					if (temp!=(uint8_t)(i+j+OFFSETV)){
+						error++;
+						errorsTotal++;
+					}
+					printf(" 0x%02x",temp);
 				}
-				temp=readByte(i+j);
-				if (temp!=(uint8_t)(i+j+OFFSETV)){
-					error++;
+				if(error){
+					printf("\t    %02d\n",error);
 				}
-				printf(" 0x%02x",temp);
-			}
-			if(error){
-				printf("\t    %02d\n",error);
-			}
-			else{
-				printf("\n");
+				else{
+					printf("\n");
+				}
 			}
 		}
+		else															// testing data
+		{
+			for (uint16_t i=0;i<sizeOfData0; i+=0x10)
+			{
+				uint8_t error=0;
+				printf("0x%04x\t\t",i);
+				for (uint8_t j=0;j<0x10; j++)
+				{
+					if (j==8){
+						printf("\t");
+					}
+					temp=readByte(i+j);
+					if (temp!=(uint8_t)(data0[i+j])){
+						error++;
+						errorsTotal++;
+					}
+					printf(" 0x%02x",temp);
+				}
+				if(error){
+					printf("\t    %02d\n",error);
+				}
+				else{
+					printf("\n");
+				}
+			}
+			for (uint16_t i=0;i<sizeOfData1; i+=0x10)
+			{
+				uint8_t error=0;
+				printf("0x%04x\t\t",i);
+				for (uint8_t j=0;j<0x10; j++)
+				{
+					if (j==8){
+						printf("\t");
+					}
+					temp=readByte(sizeOfData0+i+j);
+					if (temp!=(uint8_t)(data1[i+j])){
+						error++;
+						errorsTotal++;
+					}
+					printf(" 0x%02x",temp);
+				}
+				if(error){
+					printf("\t    %02d\n",error);
+				}
+				else{
+					printf("\n");
+				}
+			}
+		}
+
+		
+		printf ("\n Total errors count: %d\n",errorsTotal);
 		printf("\n///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\n\n");
 		_delay_ms(3000);
 	}
